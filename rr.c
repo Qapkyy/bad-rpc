@@ -29,6 +29,20 @@ typedef struct {
     	int    first_response;
 } Process;
 
-
+double get_wall_time(void)
+{
+#ifdef _WIN32
+    FILETIME ft;
+    ULARGE_INTEGER uli;
+    GetSystemTimeAsFileTime(&ft);
+    uli.LowPart  = ft.dwLowDateTime;
+    uli.HighPart = ft.dwHighDateTime;
+    return (double)uli.QuadPart / 10000000.0;
+#else
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return tv.tv_sec + tv.tv_usec / 1000000.0;
+#endif
+}
 
 
