@@ -5,11 +5,11 @@
 #define TIME_QUANTUM 2
 
 #ifdef _WIN32
-	#define PLATFORM_NAME "Windows Ugly"
+	#define PLATFORM_NAME "Windows"
 	#include <windows.h>
 	#include <process.h>
 #else
-	#define PLATFORM_NAME "Bad Linux"
+	#define PLATFORM_NAME "Linux"
 	#include <unistd.h>
 	#include <sys/wait.h>
 	#include <sys/time.h>
@@ -45,4 +45,21 @@ double get_wall_time(void)
 #endif
 }
 
+void cpu_intensive_work(int seconds)
+{
+    double target = get_wall_time() + seconds;
+    volatile double result = 0.0;
+    while (get_wall_time() < target) {
+        for (volatile long i = 0; i < 10000000L; i++) {
+            result += i * 3.14159;
+            result  = result / 2.71828;
+        }
+    }
+}
 
+
+
+void calculate_rr_times()
+{
+
+}
