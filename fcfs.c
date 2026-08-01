@@ -59,17 +59,79 @@ void cpu_intensive_work(int seconds) {
 
 
 
-void execute_process()
+void execute_process(Process *p)
 {
+#ifdef _WIN32
+    STARTUPINFOA        si;
+    PROCESS_INFORMATION pi;
+    char cmdline[128];
 
+    ZeroMemory(&si, sizeof(si));
+    si.cb = sizeof(si);
+    ZeroMemory(&pi, sizeof(pi));
+
+    snprintf(cmdline, sizeof(cmdline), "\"%s\" -work %d",
+             "", p->burst_time);
+
+    char exe_path[MAX_PATH];
+    GetModuleFileNameA(NULL, exe_path, MAX_PATH);
+    snprintf(cmdline, sizeof(cmdline), "\"%s\" -work %d",
+             exe_path, p->burst_time);
+
+    if (CreateProcessA(
+            NULL,
+            cmdline,
+            NULL, NULL,
+            FALSE,
+            CREATE_NO_WINDOW,
+            NULL, NULL,
+            &si, &pi)) {
+        WaitForSingleObject(pi.hProcess, INFINITE);
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+    } else {
+        cpu_intensive_work(p->burst_time);
+    }
+
+#else
+    pid_t child = fork();
+    if (child == 0) {
+        cpu_intensive_work(p->burst_time);
+        exit(0);
+    } else {
+        int status;
+        waitpid(child, &status, 0);
+    }
+#endif
 }
 
-void portable_sleep()
+void portable_sleep(int seconds)
 {
-
+#ifdef _WIN32
+    Sleep((DWORD)(seconds * 1000));
+#else
+    sleep((unsigned int)seconds);
+#endif
 }
 
-void calculate_fcfs_times()
+void calculate_fcfs_times(Process p[], int n)
+{
+	double current_time = 0;
+    	for (int i = 0; i < n; i++) {
+        if (current_time < p[i].arrival_time)
+            current_time = p[i].arrival_time;
+
+        p[i].calc_start_time       = current_time;
+        p[i].calc_completion_time  = current_time + p[i].burst_time;
+        p[i].calc_turnaround_time  = p[i].calc_completion_time - p[i].arrival_time;
+        p[i].calc_waiting_time     = p[i].calc_start_time - p[i].arrival_time;
+        p[i].calc_response_time    = p[i].calc_start_time - p[i].arrival_time;
+
+        current_time = p[i].calc_completion_time;
+    }
+}
+
+void print_table()
 {
 
 }
