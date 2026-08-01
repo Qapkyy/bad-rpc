@@ -166,4 +166,19 @@ void calculate_rr_times(Process p[], int n, int quantum) {
     }
 }
 
+void print_table(Process p[])
+{
 
+}
+
+void calculate_metrics(Process p[])
+{
+
+}
+
+
+int main()
+{
+
+	return 0;
+}
