@@ -57,7 +57,39 @@ void cpu_intensive_work(int seconds)
     }
 }
 
+void execute_process_quantum(Process *p, int quantum) {
+#ifdef _WIN32
+    STARTUPINFOA        si;
+    PROCESS_INFORMATION pi;
+    char exe_path[MAX_PATH];
+    char cmdline[MAX_PATH + 32];
 
+    ZeroMemory(&si, sizeof(si));
+    si.cb = sizeof(si);
+    ZeroMemory(&pi, sizeof(pi));
+
+    GetModuleFileNameA(NULL, exe_path, MAX_PATH);
+    snprintf(cmdline, sizeof(cmdline), "\"%s\" -work %d", exe_path, quantum);
+
+    if (CreateProcessA(NULL, cmdline, NULL, NULL, FALSE,
+                       CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
+        WaitForSingleObject(pi.hProcess, INFINITE);
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+    } else {
+        cpu_intensive_work(quantum);   /* fallback */
+    }
+#else
+    pid_t child = fork();
+    if (child == 0) {
+        cpu_intensive_work(quantum);
+        exit(0);
+    } else {
+        int status;
+        waitpid(child, &status, 0);
+    }
+#endif
+}
 
 void calculate_rr_times()
 {
