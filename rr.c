@@ -166,19 +166,194 @@ void calculate_rr_times(Process p[], int n, int quantum) {
     }
 }
 
-void print_table(Process p[])
+void print_table(Process p[], int n)
 {
-
+    printf("\n");
+    printf("========================================================================================\n");
+    printf("                  ROUND ROBIN SCHEDULING - PROCESS EXECUTION TABLE\n");
+    printf("                          (Theoretical Calculations)\n");
+    printf("========================================================================================\n");
+    printf("PID  Task Name                    AT    BT    ST      CT      TAT     WT      RT\n");
+    printf("----------------------------------------------------------------------------------------\n");
+    for (int i = 0; i < n; i++) {
+        printf("P%-3d %-26s %-5d %-5d %-7.2f %-7.2f %-7.2f %-7.2f %-7.2f\n",
+               p[i].pid, p[i].task_name,
+               p[i].arrival_time, p[i].burst_time,
+               p[i].calc_start_time,      p[i].calc_completion_time,
+               p[i].calc_turnaround_time, p[i].calc_waiting_time,
+               p[i].calc_response_time);
+    }
+    printf("========================================================================================\n");
+    printf("AT=Arrival Time, BT=Burst Time, ST=Start Time, CT=Completion Time\n");
+    printf("TAT=Turnaround Time, WT=Waiting Time, RT=Response Time (all in seconds)\n");
+    printf("Time Quantum = %d seconds\n", TIME_QUANTUM);
+    printf("Note: Table values are identical across OS (based on algorithm logic)\n");
+    printf("========================================================================================\n");
 }
 
-void calculate_metrics(Process p[])
-{
+void calculate_metrics(Process p[], int n,
+                       double total_actual_time, int context_switches) {
+    double total_wt = 0, total_tat = 0, total_rt = 0;
+    double max_wt   = 0, max_tat  = 0, total_burst = 0;
 
+    for (int i = 0; i < n; i++) {
+        total_wt    += p[i].calc_waiting_time;
+        total_tat   += p[i].calc_turnaround_time;
+        total_rt    += p[i].calc_response_time;
+        total_burst += p[i].burst_time;
+        if (p[i].calc_waiting_time    > max_wt)  max_wt  = p[i].calc_waiting_time;
+        if (p[i].calc_turnaround_time > max_tat) max_tat = p[i].calc_turnaround_time;
+    }
+
+    double cpu_util = (total_burst / total_actual_time) * 100.0;
+
+    printf("\n");
+    printf("========================================================================================\n");
+    printf("           PERFORMANCE METRICS (%s - Round Robin)\n", PLATFORM_NAME);
+    printf("                      (Actual OS Measurements)\n");
+    printf("========================================================================================\n");
+    printf("Average Waiting Time       = %.2f seconds\n", total_wt  / n);
+    printf("Average Response Time      = %.2f seconds\n", total_rt  / n);
+    printf("Average Turnaround Time    = %.2f seconds\n", total_tat / n);
+    printf("Max Waiting Time           = %.2f seconds\n", max_wt);
+    printf("Max Turnaround Time        = %.2f seconds\n", max_tat);
+    printf("Throughput                 = %.3f processes/second\n", n / total_actual_time);
+    printf("CPU Utilization            = %.2f%%\n", cpu_util);
+    printf("Avg Process Latency        = %.2f seconds\n", total_wt / n);
+    printf("Worst-case Latency         = %.2f seconds (heuristic)\n", total_burst);
+    printf("Total Execution Time       = %.2f seconds\n", total_actual_time);
+    printf("Context Switches           = %d\n", context_switches);
+    printf("Time Quantum               = %d seconds\n", TIME_QUANTUM);
+    printf("========================================================================================\n");
+    printf("Note: These metrics vary by OS due to kernel overhead and scheduling efficiency\n");
+    printf("========================================================================================\n");
 }
 
-
-int main()
+int main(int argc, char *argv[])
 {
 
-	return 0;
+#ifdef _WIN32
+    if (argc >= 3 && strcmp(argv[1], "-work") == 0) {
+        cpu_intensive_work(atoi(argv[2]));
+        return 0;
+    }
+#endif
+
+    Process processes[] = {
+        {1,  "Microphone Feed - Victim1",  0,  5, 0, 0,0,0,0,0, 1},
+        {2,  "Screen Sharing - Victim 2",  0,  5, 0, 0,0,0,0,0, 1},
+        {3,  "Live Camera Feed - Victim1", 1,  4, 0, 0,0,0,0,0, 1},
+        {4,  "Live Camera Feed - Victim2", 1,  4, 0, 0,0,0,0,0, 1},
+        {5,  "Reverse Tunnel Proxy1",      2,  6, 0, 0,0,0,0,0, 1},
+        {6,  "Reverse Tunnel Proxy2",      2,  6, 0, 0,0,0,0,0, 1},
+        {7,  "Log Collection - Victim1",   3,  3, 0, 0,0,0,0,0, 1},
+        {8,  "Key logger",                 5,  5, 0, 0,0,0,0,0, 1},
+        {9,  "C2 Command Dispatcher",      9,  5, 0, 0,0,0,0,0, 1},
+        {10, "Victim Probe Handler",       10, 4, 0, 0,0,0,0,0, 1},
+    };
+    int n = sizeof(processes) / sizeof(processes[0]);
+
+    printf("========================================================================================\n");
+    printf("       C2 Command & Control Server - Process Scheduler (%s)\n", PLATFORM_NAME);
+    printf("                   Algorithm: Round Robin (RR)\n");
+    printf("========================================================================================\n\n");
+
+    printf("C2 Server Configuration:\n");
+    printf("  - Total Processes     : %d\n", n);
+    printf("  - Scheduling Policy   : Round Robin (Preemptive)\n");
+    printf("  - Time Quantum        : %d seconds\n", TIME_QUANTUM);
+    printf("  - Platform            : %s\n", PLATFORM_NAME);
+    printf("  - Execution Mode      : Kernel-level process scheduling\n");
+    printf("  - Load Type           : C2 server operations with multiple victim connections\n\n");
+
+    calculate_rr_times(processes, n, TIME_QUANTUM);
+
+    printf("--- Process Queue (Arrival Order) ---\n");
+    printf("PID  C2 Component                      Arrival Time  Burst Time\n");
+    printf("-----------------------------------------------------------------------\n");
+    for (int i = 0; i < n; i++) {
+        printf("P%-3d %-35s %-13ds %-10ds\n",
+               processes[i].pid, processes[i].task_name,
+               processes[i].arrival_time, processes[i].burst_time);
+    }
+
+    printf("\n=== Starting Round Robin Scheduling Simulation (C2 Server) ===\n");
+    printf("Measuring actual OS performance on %s...\n\n", PLATFORM_NAME);
+
+    double simulation_start = get_wall_time();
+    int    context_switches = 0;
+    int    completed        = 0;
+
+    for (int i = 0; i < n; i++) {
+        processes[i].remaining_time = processes[i].burst_time;
+        processes[i].first_response = 1;
+    }
+
+    int queue[200], front = 0, rear = 0;
+    int in_queue[200];
+    for (int i = 0; i < n; i++) in_queue[i] = 0;
+
+    for (int i = 0; i < n; i++) {
+        if (processes[i].arrival_time == 0) {
+            queue[rear++] = i;
+            in_queue[i]   = 1;
+        }
+    }
+
+    while (completed < n) {
+        double elapsed = get_wall_time() - simulation_start;
+
+        if (front == rear) {
+            portable_sleep_ms(100);
+            /* Check for newly arrived processes */
+            elapsed = get_wall_time() - simulation_start;
+            for (int i = 0; i < n; i++) {
+                if (!in_queue[i] && processes[i].arrival_time <= (int)elapsed
+                    && processes[i].remaining_time > 0) {
+                    queue[rear++] = i;
+                    in_queue[i]   = 1;
+                }
+            }
+        } else {
+            int idx       = queue[front++];
+            int exec_time = (processes[idx].remaining_time < TIME_QUANTUM)
+                            ? processes[idx].remaining_time : TIME_QUANTUM;
+
+            printf(">>  Executing P%d: %s (Remaining: %ds, Quantum: %ds)\n",
+                   processes[idx].pid, processes[idx].task_name,
+                   processes[idx].remaining_time, exec_time);
+
+            execute_process_quantum(&processes[idx], exec_time);
+            processes[idx].remaining_time -= exec_time;
+            context_switches++;
+
+            elapsed = get_wall_time() - simulation_start;
+            for (int i = 0; i < n; i++) {
+                if (!in_queue[i] && processes[i].arrival_time <= (int)elapsed
+                    && processes[i].remaining_time > 0) {
+                    queue[rear++] = i;
+                    in_queue[i]   = 1;
+                }
+            }
+
+            if (processes[idx].remaining_time > 0) {
+                queue[rear++] = idx;
+                printf("   P%d preempted, re-queued\n\n", processes[idx].pid);
+            } else {
+                printf("OK  Completed P%d\n\n", processes[idx].pid);
+                completed++;
+                in_queue[idx] = 0;
+            }
+        }
+    }
+
+    double total_actual_time = get_wall_time() - simulation_start;
+
+    print_table(processes, n);
+    calculate_metrics(processes, n, total_actual_time, context_switches);
+
+    printf("\nSimulation completed on %s!\n", PLATFORM_NAME);
+    printf("Compare these metrics between Linux and Windows to evaluate C2 server performance.\n\n");
+
+    return 0;
 }
